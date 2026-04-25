@@ -1,9 +1,7 @@
 package com.empireconquest.listeners;
 
 import com.empireconquest.EmpireConquest;
-import com.empireconquest.objects.EmpTeam;
-import com.empireconquest.objects.MacuahuitlItem;
-import com.empireconquest.objects.MusketItem;
+import com.empireconquest.objects.*;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -11,10 +9,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.PrepareItemCraftEvent;
 import org.bukkit.inventory.ItemStack;
 
-/**
- * Prevents players from crafting team-locked items if they are on the wrong team.
- * Uses PersistentDataContainer tags — never lore or name matching.
- */
 public class CraftListener implements Listener {
 
     private final EmpireConquest plugin;
@@ -28,23 +22,24 @@ public class CraftListener implements Listener {
         ItemStack result = event.getInventory().getResult();
         if (result == null || !result.hasItemMeta()) return;
 
-        // Identify which team item this recipe produces
-        boolean isMusketRecipe  = MusketItem.isMusket(result, plugin)
-                               || MusketItem.isMusketBall(result, plugin);
-        boolean isMacuahuitl    = MacuahuitlItem.isMacuahuitl(result, plugin);
+        boolean isSpanishItem = MusketItem.isMusket(result, plugin)
+                             || MusketItem.isIronBall(result, plugin)
+                             || FlintlockItem.isFlintlock(result, plugin);
 
-        if (!isMusketRecipe && !isMacuahuitl) return;
+        boolean isAztecItem   = MacuahuitlItem.isMacuahuitl(result, plugin)
+                             || ObsidianBladeItem.isObsidianBlade(result, plugin);
 
-        // Check every viewer — if any viewer is on the wrong team, block it
+        if (!isSpanishItem && !isAztecItem) return;
+
         for (HumanEntity viewer : event.getViewers()) {
             EmpTeam team = plugin.getTeamManager().getTeam(viewer.getUniqueId());
 
-            if (isMusketRecipe && team != EmpTeam.SPANISH) {
+            if (isSpanishItem && team != EmpTeam.SPANISH) {
                 event.getInventory().setResult(null);
                 return;
             }
 
-            if (isMacuahuitl && team != EmpTeam.AZTEC) {
+            if (isAztecItem && team != EmpTeam.AZTEC) {
                 event.getInventory().setResult(null);
                 return;
             }

@@ -2,9 +2,7 @@ package com.empireconquest.listeners;
 
 import com.empireconquest.EmpireConquest;
 import com.empireconquest.Phase;
-import com.empireconquest.objects.EmpTeam;
-import com.empireconquest.objects.MacuahuitlItem;
-import com.empireconquest.objects.MusketItem;
+import com.empireconquest.objects.*;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Sound;
@@ -30,39 +28,46 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
-/**
- * Handles:
- *  - Musket firing (left-click), cooldown action bar, ray-trace hit detection
- *  - Macuahuitl speed effect management
- */
 public class CombatListener implements Listener {
 
-    private static final double MUSKET_DAMAGE    = 25.0;
-    private static final double MUSKET_RANGE     = 50.0;
-    private static final double BLOOM_THRESHOLD  = 20.0;  // blocks beyond which bloom applies
-    private static final double BLOOM_MAX_DEGREES = 8.0;
-    private static final long   COOLDOWN_TICKS   = 100L;  // 5 seconds
+    // Musket stats
+    private static final double MUSKET_DAMAGE          = 25.0;
+    private static final double MUSKET_RANGE           = 50.0;
+    private static final double MUSKET_BLOOM_THRESHOLD = 20.0;
+    private static final double MUSKET_BLOOM_MAX       = 8.0;
+    private static final long   MUSKET_COOLDOWN_TICKS  = 100L; // 5 seconds
+
+    // Flintlock stats — shorter range, faster cooldown, more bloom
+    private static final double FLINTLOCK_DAMAGE          = 14.0; // 7 hearts
+    private static final double FLINTLOCK_RANGE           = 25.0;
+    private static final double FLINTLOCK_BLOOM_THRESHOLD = 10.0;
+    private static final double FLINTLOCK_BLOOM_MAX       = 12.0;
+    private static final long   FLINTLOCK_COOLDOWN_TICKS  = 40L;  // 2 seconds
 
     private final EmpireConquest plugin;
-    /** UUID → last fire time in milliseconds */
-    private final Map<UUID, Long> cooldowns = new HashMap<>();
+    private final Map<UUID, Long> musketCooldowns    = new HashMap<>();
+    private final Map<UUID, Long> flintlockCooldowns = new HashMap<>();
 
     public CombatListener(EmpireConquest plugin) {
         this.plugin = plugin;
     }
 
-    // ── Musket ────────────────────────────────────────────────────────────────
+    // ── Musket / Flintlock firing ─────────────────────────────────────────────
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND) return;
+        // getHand() returns null for LEFT_CLICK_AIR — allow null (main hand) but reject off-hand
+        EquipmentSlot hand = event.getHand();
+        if (hand != null && hand != EquipmentSlot.HAND) return;
         if (plugin.getPhase() != Phase.CONQUEST) return;
 
-        Player player = event.getPlayer();
-        ItemStack held = player.getInventory().getItemInMainHand();
-        if (!MusketItem.isMusket(held, plugin)) return;
+        Player    player = event.getPlayer();
+        ItemStack held   = player.getInventory().getItemInMainHand();
 
-        // Only on left-click actions
+        boolean isMusket    = MusketItem.isMusket(held, plugin);
+        boolean isFlintlock = FlintlockItem.isFlintlock(held, plugin);
+        if (!isMusket && !isFlintlock) return;
+
         switch (event.getAction()) {
             case LEFT_CLICK_AIR, LEFT_CLICK_BLOCK -> {}
             default -> { return; }
@@ -70,103 +75,101 @@ public class CombatListener implements Listener {
 
         event.setCancelled(true);
 
-        // Team check
         EmpTeam team = plugin.getTeamManager().getTeam(player.getUniqueId());
         if (team != EmpTeam.SPANISH) {
-            player.sendMessage("§cOnly Spanish players can fire a musket.");
+            player.sendMessage("§cOnly Spanish players can use this weapon.");
             return;
         }
 
-        // Cooldown check
-        long now = System.currentTimeMillis();
-        long lastFired = cooldowns.getOrDefault(player.getUniqueId(), 0L);
-        long cooldownMs = COOLDOWN_TICKS * 50L; // ticks → ms
-        if (now - lastFired < cooldownMs) {
-            long remaining = cooldownMs - (now - lastFired);
-            player.sendMessage(Component.text("Still reloading! (" + String.format("%.1f", remaining / 1000.0) + "s)", NamedTextColor.RED));
-            return;
-        }
-
-        // Check for musket balls in inventory
-        ItemStack ball = findMusketBall(player);
-        if (ball == null) {
-            player.sendMessage(Component.text("No Musket Balls in your inventory!", NamedTextColor.RED));
-            return;
-        }
-
-        // Consume one ball
-        if (ball.getAmount() > 1) {
-            ball.setAmount(ball.getAmount() - 1);
+        if (isMusket) {
+            handleGunFire(player, musketCooldowns, MUSKET_COOLDOWN_TICKS,
+                MUSKET_DAMAGE, MUSKET_RANGE, MUSKET_BLOOM_THRESHOLD, MUSKET_BLOOM_MAX);
         } else {
-            player.getInventory().remove(ball);
+            handleGunFire(player, flintlockCooldowns, FLINTLOCK_COOLDOWN_TICKS,
+                FLINTLOCK_DAMAGE, FLINTLOCK_RANGE, FLINTLOCK_BLOOM_THRESHOLD, FLINTLOCK_BLOOM_MAX);
         }
-
-        cooldowns.put(player.getUniqueId(), now);
-        fireMusket(player);
-        startReloadBar(player);
     }
 
-    private ItemStack findMusketBall(Player player) {
+    private void handleGunFire(Player player, Map<UUID, Long> cooldowns, long cooldownTicks,
+                                double damage, double range, double bloomThreshold, double bloomMax) {
+        long now        = System.currentTimeMillis();
+        long lastFired  = cooldowns.getOrDefault(player.getUniqueId(), 0L);
+        long cooldownMs = cooldownTicks * 50L;
+
+        if (now - lastFired < cooldownMs) {
+            long remaining = cooldownMs - (now - lastFired);
+            player.sendMessage(Component.text(
+                "Still reloading! (" + String.format("%.1f", remaining / 1000.0) + "s)",
+                NamedTextColor.RED));
+            return;
+        }
+
+        ItemStack ball = findIronBall(player);
+        if (ball == null) {
+            player.sendMessage(Component.text("No Iron Balls in your inventory!", NamedTextColor.RED));
+            return;
+        }
+
+        if (ball.getAmount() > 1) ball.setAmount(ball.getAmount() - 1);
+        else player.getInventory().remove(ball);
+
+        cooldowns.put(player.getUniqueId(), now);
+        fireGun(player, damage, range, bloomThreshold, bloomMax);
+        startReloadBar(player, cooldownTicks);
+    }
+
+    private ItemStack findIronBall(Player player) {
         for (ItemStack item : player.getInventory().getContents()) {
-            if (MusketItem.isMusketBall(item, plugin)) return item;
+            if (MusketItem.isIronBall(item, plugin)) return item;
         }
         return null;
     }
 
-    private void fireMusket(Player player) {
+    private void fireGun(Player player, double damage, double range,
+                         double bloomThreshold, double bloomMax) {
         Vector direction = player.getEyeLocation().getDirection().normalize();
 
-        // Straight ray trace first to find any target
         RayTraceResult straight = player.getWorld().rayTraceEntities(
-            player.getEyeLocation(),
-            direction,
-            MUSKET_RANGE,
-            entity -> entity instanceof Player && !entity.equals(player) && entity instanceof LivingEntity
+            player.getEyeLocation(), direction, range,
+            entity -> entity instanceof Player && !entity.equals(player)
         );
 
         Entity target = null;
 
         if (straight != null && straight.getHitEntity() != null) {
             double dist = straight.getHitPosition().distance(player.getEyeLocation().toVector());
-            if (dist <= BLOOM_THRESHOLD) {
-                // Close range: guaranteed hit
+            if (dist <= bloomThreshold) {
                 target = straight.getHitEntity();
             } else {
-                // Far range: apply bloom — re-trace with bloomed direction
-                Vector bloomed = applyBloom(direction, BLOOM_MAX_DEGREES);
+                Vector bloomed = applyBloom(direction, bloomMax);
                 RayTraceResult bloomResult = player.getWorld().rayTraceEntities(
-                    player.getEyeLocation(),
-                    bloomed,
-                    MUSKET_RANGE,
-                    entity -> entity instanceof Player && !entity.equals(player) && entity instanceof LivingEntity
+                    player.getEyeLocation(), bloomed, range,
+                    entity -> entity instanceof Player && !entity.equals(player)
                 );
-                if (bloomResult != null && bloomResult.getHitEntity() != null) {
-                    target = bloomResult.getHitEntity();
-                }
+                if (bloomResult != null) target = bloomResult.getHitEntity();
             }
         }
 
         if (target instanceof LivingEntity livingTarget) {
-            livingTarget.damage(MUSKET_DAMAGE, player);
-            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 1.0f);
-            player.sendMessage(Component.text("Hit! (" + String.format("%.1f", MUSKET_DAMAGE / 2.0) + " hearts)", NamedTextColor.GOLD));
+            livingTarget.damage(damage, player);
+            player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.5f, 1.2f);
+            player.sendMessage(Component.text(
+                "Hit! (" + String.format("%.1f", damage / 2.0) + " hearts)",
+                NamedTextColor.GOLD));
         } else {
             player.getWorld().playSound(player.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.3f, 0.8f);
         }
     }
 
-    /** Rotates a vector by a random angle up to maxDegrees in a random azimuthal direction. */
     private Vector applyBloom(Vector direction, double maxDegrees) {
         ThreadLocalRandom rng = ThreadLocalRandom.current();
         double angle   = Math.toRadians(rng.nextDouble(0, maxDegrees));
         double azimuth = rng.nextDouble(0, Math.PI * 2);
 
-        // Build a perpendicular basis
-        Vector ref  = Math.abs(direction.getX()) < 0.9 ? new Vector(1, 0, 0) : new Vector(0, 1, 0);
-        Vector perp = direction.clone().crossProduct(ref).normalize();
+        Vector ref   = Math.abs(direction.getX()) < 0.9 ? new Vector(1, 0, 0) : new Vector(0, 1, 0);
+        Vector perp  = direction.clone().crossProduct(ref).normalize();
         Vector perp2 = direction.clone().crossProduct(perp).normalize();
 
-        // Random perpendicular direction at this azimuth
         Vector randomPerp = perp.clone().multiply(Math.cos(azimuth))
             .add(perp2.multiply(Math.sin(azimuth)));
 
@@ -175,10 +178,10 @@ public class CombatListener implements Listener {
             .normalize();
     }
 
-    private void startReloadBar(Player player) {
+    private void startReloadBar(Player player, long cooldownTicks) {
         new BukkitRunnable() {
             int tick = 0;
-            final int maxTicks = (int) COOLDOWN_TICKS;
+            final int maxTicks = (int) cooldownTicks;
 
             @Override
             public void run() {
@@ -196,17 +199,20 @@ public class CombatListener implements Listener {
         }.runTaskTimer(plugin, 0L, 1L);
     }
 
-    // ── Macuahuitl speed effect ───────────────────────────────────────────────
+    // ── Speed weapon helpers ──────────────────────────────────────────────────
+
+    private boolean isSpeedWeapon(ItemStack item) {
+        return MacuahuitlItem.isMacuahuitl(item, plugin)
+            || ObsidianBladeItem.isObsidianBlade(item, plugin);
+    }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onItemHeld(PlayerItemHeldEvent event) {
-        Player player = event.getPlayer();
-        // Check what they're switching away from
-        ItemStack prev = player.getInventory().getItem(event.getPreviousSlot());
-        if (MacuahuitlItem.isMacuahuitl(prev, plugin)) {
-            // Switching away from macuahuitl — remove speed unless new item is also macuahuitl
+        Player    player = event.getPlayer();
+        ItemStack prev   = player.getInventory().getItem(event.getPreviousSlot());
+        if (isSpeedWeapon(prev)) {
             ItemStack next = player.getInventory().getItem(event.getNewSlot());
-            if (!MacuahuitlItem.isMacuahuitl(next, plugin)) {
+            if (!isSpeedWeapon(next)) {
                 player.removePotionEffect(PotionEffectType.SPEED);
             }
         }
@@ -215,23 +221,20 @@ public class CombatListener implements Listener {
     @EventHandler(priority = EventPriority.MONITOR)
     public void onItemDrop(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
-        if (MacuahuitlItem.isMacuahuitl(event.getItemDrop().getItemStack(), plugin)) {
-            // Dropping the macuahuitl — remove speed (will be re-applied by task if still holding one)
-            ItemStack held = player.getInventory().getItemInMainHand();
-            if (!MacuahuitlItem.isMacuahuitl(held, plugin)) {
+        if (isSpeedWeapon(event.getItemDrop().getItemStack())) {
+            if (!isSpeedWeapon(player.getInventory().getItemInMainHand())) {
                 player.removePotionEffect(PotionEffectType.SPEED);
             }
         }
     }
 
     /** Called every 20 ticks from EmpireConquest's repeating task during CONQUEST. */
-    public void tickMacuahuitlSpeed() {
+    public void tickWeaponSpeed() {
         for (Player player : org.bukkit.Bukkit.getOnlinePlayers()) {
             EmpTeam team = plugin.getTeamManager().getTeam(player.getUniqueId());
             if (team != EmpTeam.AZTEC) continue;
 
-            ItemStack held = player.getInventory().getItemInMainHand();
-            if (MacuahuitlItem.isMacuahuitl(held, plugin)) {
+            if (isSpeedWeapon(player.getInventory().getItemInMainHand())) {
                 player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, 40, 0, false, false, false));
             }
         }
@@ -239,6 +242,7 @@ public class CombatListener implements Listener {
 
     /** Clear all cooldowns (called on /emp end). */
     public void reset() {
-        cooldowns.clear();
+        musketCooldowns.clear();
+        flintlockCooldowns.clear();
     }
 }

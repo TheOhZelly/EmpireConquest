@@ -7,11 +7,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-/**
- * Manages per-player state on join/quit:
- *  - Shows scoreboard and boss bar to late joiners during CONQUEST.
- *  - Cleans up boss bar on quit.
- */
 public class JoinQuitListener implements Listener {
 
     private final EmpireConquest plugin;
@@ -22,8 +17,9 @@ public class JoinQuitListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        // Reload team assignment so joining player has their team loaded
         plugin.getTeamManager().load();
+        // Apply nametag color on the main scoreboard immediately
+        plugin.getTeamManager().applyNametag(event.getPlayer());
 
         if (plugin.getPhase() == Phase.CONQUEST) {
             plugin.getScoreboardManager().showToPlayer(event.getPlayer());
@@ -35,7 +31,6 @@ public class JoinQuitListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         if (plugin.getPhase() == Phase.CONQUEST) {
             plugin.getZoneManager().hideBossBar(event.getPlayer());
-            // Trigger a win-condition check in case this was the last living player of a team
             plugin.getServer().getScheduler().runTaskLater(plugin,
                 () -> plugin.getLifeManager().checkLivesWin(), 1L);
         }

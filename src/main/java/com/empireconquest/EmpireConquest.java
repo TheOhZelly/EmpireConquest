@@ -63,7 +63,9 @@ public class EmpireConquest extends JavaPlugin {
 
         // Register recipes
         MusketItem.registerRecipes(this);
+        FlintlockItem.registerRecipe(this);
         MacuahuitlItem.registerRecipe(this);
+        ObsidianBladeItem.registerRecipe(this);
 
         // Register listeners
         combatListener = new CombatListener(this);
@@ -123,7 +125,7 @@ public class EmpireConquest extends JavaPlugin {
         speedTask = new BukkitRunnable() {
             @Override
             public void run() {
-                if (phase == Phase.CONQUEST) combatListener.tickMacuahuitlSpeed();
+                if (phase == Phase.CONQUEST) combatListener.tickWeaponSpeed();
             }
         }.runTaskTimer(this, 20L, 20L);
 

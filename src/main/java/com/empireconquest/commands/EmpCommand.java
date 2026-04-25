@@ -2,12 +2,13 @@ package com.empireconquest.commands;
 
 import com.empireconquest.EmpireConquest;
 import com.empireconquest.Phase;
-import com.empireconquest.objects.EmpTeam;
+import com.empireconquest.objects.*;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,7 +26,11 @@ import java.util.stream.Collectors;
 public class EmpCommand implements TabExecutor {
 
     private static final List<String> TOP_LEVEL = List.of(
-        "addzone", "setsafe", "setratio", "setlives", "start", "pause", "balance", "team", "end"
+        "addzone", "setsafe", "setratio", "setlives", "start", "pause", "balance", "team", "end", "give", "capzone"
+    );
+
+    private static final List<String> GIVE_ITEMS = List.of(
+        "musket", "flintlock", "iron_ball", "macuahuitl", "obsidian_blade"
     );
 
     private final EmpireConquest plugin;
@@ -60,6 +65,8 @@ public class EmpCommand implements TabExecutor {
             case "balance"  -> cmdBalance(sender);
             case "team"     -> cmdTeam(sender, args);
             case "end"      -> cmdEnd(sender);
+            case "give"     -> cmdGive(sender, args);
+            case "capzone"  -> cmdCapZone(sender, args);
             default         -> { sendHelp(sender); yield true; }
         };
     }
@@ -246,6 +253,20 @@ public class EmpCommand implements TabExecutor {
                 ? List.of("<amount>") : Collections.emptyList();
             case "addzone" -> args.length == 2
                 ? List.of("<name>") : Collections.emptyList();
+            case "give" -> {
+                if (args.length == 2) yield onlinePlayers(args[1]);
+                if (args.length == 3) yield filterStartsWith(GIVE_ITEMS, args[2]);
+                if (args.length == 4) yield List.of("<amount>");
+                yield Collections.emptyList();
+            }
+            case "capzone" -> {
+                if (args.length == 2) yield plugin.getZoneManager().getZones().stream()
+                    .map(z -> z.getName())
+                    .filter(n -> n.toLowerCase().startsWith(args[1].toLowerCase()))
+                    .collect(Collectors.toList());
+                if (args.length == 3) yield filterStartsWith(List.of("spanish", "aztec", "neutral"), args[2]);
+                yield Collections.emptyList();
+            }
             default -> Collections.emptyList();
         };
     }
@@ -263,6 +284,67 @@ public class EmpCommand implements TabExecutor {
             .collect(Collectors.toList());
     }
 
+    private boolean cmdCapZone(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage("§cUsage: /emp capzone <zone> <spanish|aztec|neutral>"); return true;
+        }
+        var zone = plugin.getZoneManager().getZone(args[1]);
+        if (zone == null) {
+            sender.sendMessage("§cNo zone named §e" + args[1] + "§c."); return true;
+        }
+        EmpTeam team = args[2].equalsIgnoreCase("neutral") ? null : EmpTeam.fromString(args[2]);
+        if (team == null && !args[2].equalsIgnoreCase("neutral")) {
+            sender.sendMessage("§cUnknown team. Use §espanish§c, §eaztec§c, or §eneutral§c."); return true;
+        }
+        zone.setOwner(team);
+        zone.setProgress(team == EmpTeam.SPANISH ? 1.0f : team == EmpTeam.AZTEC ? 0.0f : 0.5f);
+        String teamDisplay = team == null ? "§7Neutral" : team == EmpTeam.SPANISH ? "§fSpanish" : "§6Aztec";
+        Bukkit.broadcastMessage("§6[EmpireConquest] §e" + zone.getName() + " §fforced to " + teamDisplay + "§f by an admin.");
+        sender.sendMessage("§aSet §e" + zone.getName() + " §ato " + teamDisplay + "§a.");
+        return true;
+    }
+
+    private boolean cmdGive(CommandSender sender, String[] args) {
+        if (args.length < 3) {
+            sender.sendMessage("§cUsage: /emp give <player> <item> [amount]"); return true;
+        }
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            sender.sendMessage("§cPlayer §e" + args[1] + " §cnot found or not online."); return true;
+        }
+        String itemName = args[2].toLowerCase();
+        int amount = 1;
+        if (args.length >= 4) {
+            try {
+                amount = Integer.parseInt(args[3]);
+                if (amount < 1 || amount > 64) throw new NumberFormatException();
+            } catch (NumberFormatException e) {
+                sender.sendMessage("§cAmount must be between 1 and 64."); return true;
+            }
+        }
+
+        ItemStack item = switch (itemName) {
+            case "musket"        -> MusketItem.createMusket(plugin);
+            case "flintlock"     -> FlintlockItem.createFlintlock(plugin);
+            case "iron_ball"     -> { ItemStack i = MusketItem.createIronBall(plugin); i.setAmount(amount); yield i; }
+            case "macuahuitl"    -> MacuahuitlItem.createMacuahuitl(plugin);
+            case "obsidian_blade"-> ObsidianBladeItem.createObsidianBlade(plugin);
+            default -> null;
+        };
+
+        if (item == null) {
+            sender.sendMessage("§cUnknown item. Choose: " + String.join(", ", GIVE_ITEMS)); return true;
+        }
+
+        // iron_ball already has its amount set; all others default to 1
+        if (!itemName.equals("iron_ball")) item.setAmount(amount);
+
+        target.getInventory().addItem(item);
+        sender.sendMessage("§aGave §e" + amount + "x " + itemName + " §ato §e" + target.getName() + "§a.");
+        target.sendMessage("§e[EmpireConquest] §fYou received §e" + amount + "x " + itemName + "§f.");
+        return true;
+    }
+
     // ── Help ──────────────────────────────────────────────────────────────────
 
     private void sendHelp(CommandSender sender) {
@@ -276,5 +358,7 @@ public class EmpCommand implements TabExecutor {
         sender.sendMessage("§e/emp balance              §7- Assign unassigned players");
         sender.sendMessage("§e/emp team <player> <team> §7- Force-assign a player");
         sender.sendMessage("§e/emp end                  §7- End the event");
+        sender.sendMessage("§e/emp give <player> <item> [amt] §7- Give a custom item");
+        sender.sendMessage("§e/emp capzone <zone> <team>    §7- Force capture a zone");
     }
 }

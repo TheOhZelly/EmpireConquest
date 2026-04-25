@@ -35,12 +35,14 @@ public class ScoreboardManager {
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
 
         for (int i = 0; i < MAX_LINES; i++) {
-            // Unique invisible entry using two ChatColor codes
             entries[i] = ChatColor.values()[i % 16].toString() + ChatColor.RESET;
             org.bukkit.scoreboard.Team t = board.registerNewTeam("ec_line" + i);
             t.addEntry(entries[i]);
             lineTeams[i] = t;
         }
+
+        // Set up nametag color teams on the conquest scoreboard
+        plugin.getTeamManager().ensureNametagTeams(board);
     }
 
     private void setLine(int idx, String text) {
@@ -58,7 +60,10 @@ public class ScoreboardManager {
 
     public void startConquest() {
         buildBoard();
-        for (Player p : Bukkit.getOnlinePlayers()) p.setScoreboard(board);
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            plugin.getTeamManager().applyNametag(p, board);
+            p.setScoreboard(board);
+        }
 
         updateTask = new BukkitRunnable() {
             @Override public void run() { update(); }
@@ -68,7 +73,7 @@ public class ScoreboardManager {
     public void stopConquest() {
         if (updateTask != null) { updateTask.cancel(); updateTask = null; }
 
-        Scoreboard def = Bukkit.getScoreboardManager().getMainScoreboard();
+        org.bukkit.scoreboard.Scoreboard def = Bukkit.getScoreboardManager().getMainScoreboard();
         for (Player p : Bukkit.getOnlinePlayers()) p.setScoreboard(def);
 
         board     = null;
@@ -76,7 +81,10 @@ public class ScoreboardManager {
     }
 
     public void showToPlayer(Player player) {
-        if (board != null) player.setScoreboard(board);
+        if (board != null) {
+            plugin.getTeamManager().applyNametag(player, board);
+            player.setScoreboard(board);
+        }
     }
 
     // ── Update ────────────────────────────────────────────────────────────────
@@ -94,29 +102,23 @@ public class ScoreboardManager {
         int maxSpanish   = plugin.getLifeManager().getMaxLives(EmpTeam.SPANISH);
         int maxAztec     = plugin.getLifeManager().getMaxLives(EmpTeam.AZTEC);
 
-        // Line 0: time
         setLine(0, "§fTime: §e" + time);
-        // Line 1: spanish lives
-        setLine(1, "§cSpanish: §f" + lifeBar(spanishLives, maxSpanish) + " §c" + spanishLives);
-        // Line 2: aztec lives
-        setLine(2, "§9Aztec:   §f" + lifeBar(aztecLives, maxAztec) + " §9" + aztecLives);
-        // Line 3: blank
+        setLine(1, "§fSpanish: " + lifeBar(spanishLives, maxSpanish) + " §f" + spanishLives);
+        setLine(2, "§6Aztec:   " + lifeBar(aztecLives, maxAztec) + " §6" + aztecLives);
         setLine(3, "");
-        // Line 4: domination header
         setLine(4, "§eDOMINATION:");
 
         List<CaptureZone> zones = plugin.getZoneManager().getZones();
-        int maxZoneLines = MAX_LINES - 5; // lines 5 through MAX_LINES-1
+        int maxZoneLines = MAX_LINES - 5;
         int zoneCount    = Math.min(zones.size(), maxZoneLines);
 
         for (int i = 0; i < zoneCount; i++) {
             CaptureZone z = zones.get(i);
             String ownerTag = z.getOwner() == null ? "§7~"
-                : (z.getOwner() == EmpTeam.SPANISH ? "§cS" : "§9A");
-            setLine(5 + i, "  §f" + z.getName() + ": [" + ownerTag + "§f]");
+                : (z.getOwner() == EmpTeam.SPANISH ? "§fS" : "§6A");
+            setLine(5 + i, "  §7" + z.getName() + ": [" + ownerTag + "§7]");
         }
 
-        // Clear any stale zone lines if zone list shrank
         for (int i = zoneCount; i < maxZoneLines; i++) {
             clearLine(5 + i);
         }

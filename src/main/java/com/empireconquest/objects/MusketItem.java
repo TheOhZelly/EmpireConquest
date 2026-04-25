@@ -18,22 +18,24 @@ public final class MusketItem {
     // ── Item creation ─────────────────────────────────────────────────────────
 
     public static ItemStack createMusket(EmpireConquest plugin) {
-        ItemStack item = new ItemStack(Material.CROSSBOW);
+        ItemStack item = new ItemStack(Material.IRON_HOE);
         ItemMeta  meta = item.getItemMeta();
         meta.setDisplayName("§6Musket");
         meta.setLore(List.of("§7A deadly Spanish firearm", "§eLeft-click to fire"));
+        meta.setCustomModelData(1001);
         meta.getPersistentDataContainer()
             .set(plugin.getItemTypeKey(), PersistentDataType.STRING, "musket");
         item.setItemMeta(meta);
         return item;
     }
 
-    public static ItemStack createMusketBall(EmpireConquest plugin) {
+    public static ItemStack createIronBall(EmpireConquest plugin) {
         ItemStack item = new ItemStack(Material.IRON_NUGGET);
         ItemMeta  meta = item.getItemMeta();
-        meta.setDisplayName("§7Musket Ball");
+        meta.setDisplayName("§7Iron Ball");
+        meta.setCustomModelData(1003);
         meta.getPersistentDataContainer()
-            .set(plugin.getItemTypeKey(), PersistentDataType.STRING, "musket_ball");
+            .set(plugin.getItemTypeKey(), PersistentDataType.STRING, "iron_ball");
         item.setItemMeta(meta);
         return item;
     }
@@ -51,9 +53,9 @@ public final class MusketItem {
         musketRecipe.setIngredient('S', Material.STICK);
         plugin.getServer().addRecipe(musketRecipe);
 
-        // Musket Ball: 1 Iron Ingot → 4 balls (shapeless)
-        NamespacedKey ballKey = new NamespacedKey(plugin, "musket_ball");
-        ItemStack ballResult = createMusketBall(plugin);
+        // Iron Ball: 1 Iron Ingot → 4 balls (shapeless)
+        NamespacedKey ballKey = new NamespacedKey(plugin, "iron_ball");
+        ItemStack ballResult = createIronBall(plugin);
         ballResult.setAmount(4);
         ShapelessRecipe ballRecipe = new ShapelessRecipe(ballKey, ballResult);
         ballRecipe.addIngredient(Material.IRON_INGOT);
@@ -69,10 +71,10 @@ public final class MusketItem {
         return "musket".equals(type);
     }
 
-    public static boolean isMusketBall(ItemStack item, EmpireConquest plugin) {
+    public static boolean isIronBall(ItemStack item, EmpireConquest plugin) {
         if (item == null || !item.hasItemMeta()) return false;
         String type = item.getItemMeta().getPersistentDataContainer()
             .get(plugin.getItemTypeKey(), PersistentDataType.STRING);
-        return "musket_ball".equals(type);
+        return "iron_ball".equals(type);
     }
 }

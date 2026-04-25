@@ -222,49 +222,46 @@ public class ZoneManager {
 
     // ── Particles ─────────────────────────────────────────────────────────────
 
+    private static final int PARTICLE_ROWS = 5;
+
     private void tickParticles() {
         for (CaptureZone zone : zones) {
             if (!zone.isActive()) continue;
 
             Color color;
-            if      (zone.getOwner() == EmpTeam.SPANISH) color = Color.fromRGB(255,  50,  50);
-            else if (zone.getOwner() == EmpTeam.AZTEC)   color = Color.fromRGB( 50,  50, 255);
-            else                                          color = Color.fromRGB(255, 255, 255);
+            if      (zone.getOwner() == EmpTeam.SPANISH) color = Color.fromRGB(255, 255, 255); // white
+            else if (zone.getOwner() == EmpTeam.AZTEC)   color = Color.fromRGB(255, 140,   0); // orange
+            else                                          color = Color.fromRGB(180, 180, 180); // neutral gray
 
             Particle.DustOptions dust = new Particle.DustOptions(color, 1.0f);
             Location center = zone.getCenter();
 
             List<Player> near = center.getWorld().getPlayers().stream()
-                .filter(p -> p.getLocation().distanceSquared(center) <= 10000) // 100^2
+                .filter(p -> p.getLocation().distanceSquared(center) <= 10000)
                 .toList();
 
             if (near.isEmpty()) continue;
-            drawCuboidEdges(zone, near, dust);
+            drawHorizontalRings(zone, near, dust);
         }
     }
 
-    private void drawCuboidEdges(CaptureZone zone, List<Player> players, Particle.DustOptions dust) {
+    /** Draws PARTICLE_ROWS horizontal rectangular perimeters evenly spread across the zone's height. */
+    private void drawHorizontalRings(CaptureZone zone, List<Player> players, Particle.DustOptions dust) {
         Location c1 = zone.getCorner1(), c2 = zone.getCorner2();
         int x1 = Math.min(c1.getBlockX(), c2.getBlockX()), x2 = Math.max(c1.getBlockX(), c2.getBlockX());
         int y1 = Math.min(c1.getBlockY(), c2.getBlockY()), y2 = Math.max(c1.getBlockY(), c2.getBlockY());
         int z1 = Math.min(c1.getBlockZ(), c2.getBlockZ()), z2 = Math.max(c1.getBlockZ(), c2.getBlockZ());
         World world = c1.getWorld();
 
-        // 4 bottom edges
-        drawLine(world, players, dust, x1, y1, z1, x2, y1, z1);
-        drawLine(world, players, dust, x1, y1, z2, x2, y1, z2);
-        drawLine(world, players, dust, x1, y1, z1, x1, y1, z2);
-        drawLine(world, players, dust, x2, y1, z1, x2, y1, z2);
-        // 4 top edges
-        drawLine(world, players, dust, x1, y2, z1, x2, y2, z1);
-        drawLine(world, players, dust, x1, y2, z2, x2, y2, z2);
-        drawLine(world, players, dust, x1, y2, z1, x1, y2, z2);
-        drawLine(world, players, dust, x2, y2, z1, x2, y2, z2);
-        // 4 vertical edges
-        drawLine(world, players, dust, x1, y1, z1, x1, y2, z1);
-        drawLine(world, players, dust, x2, y1, z1, x2, y2, z1);
-        drawLine(world, players, dust, x1, y1, z2, x1, y2, z2);
-        drawLine(world, players, dust, x2, y1, z2, x2, y2, z2);
+        for (int row = 0; row < PARTICLE_ROWS; row++) {
+            double t = PARTICLE_ROWS == 1 ? 0.5 : (double) row / (PARTICLE_ROWS - 1);
+            int y = (int) Math.round(y1 + (y2 - y1) * t);
+
+            drawLine(world, players, dust, x1, y, z1, x2, y, z1);
+            drawLine(world, players, dust, x2, y, z1, x2, y, z2);
+            drawLine(world, players, dust, x2, y, z2, x1, y, z2);
+            drawLine(world, players, dust, x1, y, z2, x1, y, z1);
+        }
     }
 
     private void drawLine(World world, List<Player> players, Particle.DustOptions dust,
@@ -322,4 +319,11 @@ public class ZoneManager {
     // ── Accessors ─────────────────────────────────────────────────────────────
 
     public List<CaptureZone> getZones() { return zones; }
+
+    public CaptureZone getZone(String name) {
+        for (CaptureZone z : zones) {
+            if (z.getName().equalsIgnoreCase(name)) return z;
+        }
+        return null;
+    }
 }

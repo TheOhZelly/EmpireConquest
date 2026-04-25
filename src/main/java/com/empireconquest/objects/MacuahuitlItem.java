@@ -20,17 +20,14 @@ public final class MacuahuitlItem {
 
     // ── Item creation ─────────────────────────────────────────────────────────
 
-    /**
-     * Creates a Macuahuitl with +9 attack damage and an attack speed that
-     * yields 2.5 swings/sec (base 4.0 − 1.5 = 2.5).
-     */
     public static ItemStack createMacuahuitl(EmpireConquest plugin) {
         ItemStack item = new ItemStack(Material.WOODEN_SWORD);
         ItemMeta  meta = item.getItemMeta();
         meta.setDisplayName("§5Macuahuitl");
         meta.setLore(List.of("§7Obsidian-edged Aztec warclub", "§aGrants Speed while held"));
+        meta.setCustomModelData(1005);
 
-        // +9 attack damage while in main hand
+        // +9 attack damage while in main hand (base 1 + 9 = 10 total)
         meta.addAttributeModifier(
             Attribute.GENERIC_ATTACK_DAMAGE,
             new AttributeModifier(
@@ -62,12 +59,7 @@ public final class MacuahuitlItem {
 
     // ── Recipe registration ───────────────────────────────────────────────────
 
-    /**
-     * Shape:
-     *   O__
-     *   OO_   (O = Obsidian, S = Stick)
-     *   _S_
-     */
+    // Shape: O__ / OO_ / _S_   (O=Obsidian, S=Stick)
     public static void registerRecipe(EmpireConquest plugin) {
         NamespacedKey key = new NamespacedKey(plugin, "macuahuitl");
         ItemStack result  = createMacuahuitl(plugin);

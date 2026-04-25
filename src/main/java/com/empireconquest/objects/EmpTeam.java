@@ -15,7 +15,7 @@ public enum EmpTeam {
 
     /** Friendly display color prefix. */
     public String colorPrefix() {
-        return this == SPANISH ? "§c" : "§9";
+        return this == SPANISH ? "§f" : "§6";
     }
 
     /** Single-letter abbreviation used in scoreboard. */
