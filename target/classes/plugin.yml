@@ -1,0 +1,20 @@
+name: EmpireConquest
+version: 1.0.0
+main: com.empireconquest.EmpireConquest
+api-version: 1.20
+description: Two-phase Spanish Conquest vs Aztecs event plugin.
+authors: [EmpireConquest]
+
+commands:
+  emp:
+    description: EmpireConquest admin command.
+    usage: /emp <subcommand>
+    permission: empireconquest.use
+
+permissions:
+  empireconquest.admin:
+    description: Grants access to all OP-only /emp subcommands.
+    default: op
+  empireconquest.use:
+    description: Grants access to /emp (base).
+    default: true

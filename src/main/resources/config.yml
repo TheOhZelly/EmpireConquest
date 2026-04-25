@@ -1,0 +1,26 @@
+# Lives contributed per player to their team's pool
+spanish-lives: 5
+aztec-lives: 10
+
+# Duration of the conquest phase in minutes
+timer-minutes: 45
+
+# Team ratio used by /emp balance (spanish : aztec)
+ratio-spanish: 1
+ratio-aztec: 3
+
+# Respawn safe points (set via /emp setsafe)
+safe-points:
+  spanish:
+    world: world
+    x: 0.0
+    y: 64.0
+    z: 0.0
+  aztec:
+    world: world
+    x: 100.0
+    y: 64.0
+    z: 100.0
+
+# Capture zones (set via wand + /emp addzone)
+zones: {}

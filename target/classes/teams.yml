@@ -1,0 +1,3 @@
+# UUID -> Team assignments. Never auto-cleared.
+# Format: <uuid>: SPANISH  or  <uuid>: AZTEC
+teams: {}
