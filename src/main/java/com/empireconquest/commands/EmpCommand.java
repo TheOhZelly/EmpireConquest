@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public class EmpCommand implements TabExecutor {
 
     private static final List<String> TOP_LEVEL = List.of(
-        "addzone", "setsafe", "setratio", "setlives", "start", "pause", "balance", "team", "end", "give", "capzone"
+        "addzone", "setsafe", "setratio", "setlives", "start", "pause", "balance", "team", "end", "give", "capzone", "pvp"
     );
 
     private static final List<String> GIVE_ITEMS = List.of(
@@ -67,6 +67,7 @@ public class EmpCommand implements TabExecutor {
             case "end"      -> cmdEnd(sender);
             case "give"     -> cmdGive(sender, args);
             case "capzone"  -> cmdCapZone(sender, args);
+            case "pvp"      -> cmdPvp(sender);
             default         -> { sendHelp(sender); yield true; }
         };
     }
@@ -284,6 +285,13 @@ public class EmpCommand implements TabExecutor {
             .collect(Collectors.toList());
     }
 
+    private boolean cmdPvp(CommandSender sender) {
+        boolean enabled = plugin.togglePvp();
+        String state = enabled ? "§aenabled" : "§cdisabled";
+        Bukkit.broadcastMessage("§6[EmpireConquest] §fFree PvP " + state + "§f by an admin.");
+        return true;
+    }
+
     private boolean cmdCapZone(CommandSender sender, String[] args) {
         if (args.length < 3) {
             sender.sendMessage("§cUsage: /emp capzone <zone> <spanish|aztec|neutral>"); return true;
@@ -360,5 +368,6 @@ public class EmpCommand implements TabExecutor {
         sender.sendMessage("§e/emp end                  §7- End the event");
         sender.sendMessage("§e/emp give <player> <item> [amt] §7- Give a custom item");
         sender.sendMessage("§e/emp capzone <zone> <team>    §7- Force capture a zone");
+        sender.sendMessage("§e/emp pvp                      §7- Toggle PvP during preparation");
     }
 }

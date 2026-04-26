@@ -23,10 +23,9 @@ public class PhaseListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        // Only suppress PvP during PREPARATION
         if (plugin.getPhase() != Phase.PREPARATION) return;
+        if (plugin.isPvpEnabled()) return;
 
-        // Cancel if both attacker and victim are players
         if (!(event.getDamager() instanceof Player)) return;
         if (!(event.getEntity()  instanceof Player)) return;
 

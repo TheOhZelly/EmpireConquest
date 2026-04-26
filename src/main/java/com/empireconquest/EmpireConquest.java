@@ -26,6 +26,7 @@ public class EmpireConquest extends JavaPlugin {
     // ── Plugin-wide state ─────────────────────────────────────────────────────
     private Phase   phase     = Phase.PREPARATION;
     private boolean paused    = false;
+    private boolean pvpEnabled = false;
     private int     timeRemaining = 0; // seconds, countdown
 
     // ── Managers ──────────────────────────────────────────────────────────────
@@ -223,4 +224,12 @@ public class EmpireConquest extends JavaPlugin {
         paused = !paused;
         return paused;
     }
+
+    /** Toggles free PvP (usable outside of CONQUEST); returns the new state. */
+    public boolean togglePvp() {
+        pvpEnabled = !pvpEnabled;
+        return pvpEnabled;
+    }
+
+    public boolean isPvpEnabled() { return pvpEnabled; }
 }

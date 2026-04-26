@@ -1,4 +1,5 @@
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/objects/MusketItem.java
+/home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/objects/ObsidianBladeItem.java
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/listeners/CombatListener.java
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/commands/EmpCommand.java
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/managers/TeamManager.java
@@ -13,5 +14,6 @@
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/listeners/JoinQuitListener.java
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/managers/ScoreboardManager.java
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/Phase.java
+/home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/objects/FlintlockItem.java
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/objects/EmpTeam.java
 /home/ohzelly/Documents/redfirerexplugin/EmpireConquest/src/main/java/com/empireconquest/listeners/PhaseListener.java

@@ -3,10 +3,11 @@ com/empireconquest/Phase.class
 com/empireconquest/managers/ZoneManager$3.class
 com/empireconquest/objects/CaptureZone.class
 com/empireconquest/listeners/CombatListener$2.class
-com/empireconquest/EmpireConquest$1.class
 com/empireconquest/listeners/PhaseListener.class
+com/empireconquest/EmpireConquest$1.class
 com/empireconquest/managers/TeamManager.class
 com/empireconquest/listeners/CraftListener.class
+com/empireconquest/objects/ObsidianBladeItem.class
 com/empireconquest/managers/ZoneManager$1.class
 com/empireconquest/listeners/DeathListener.class
 com/empireconquest/EmpireConquest.class
@@ -17,6 +18,7 @@ com/empireconquest/objects/MacuahuitlItem.class
 com/empireconquest/listeners/CombatListener.class
 com/empireconquest/listeners/CombatListener$1.class
 com/empireconquest/managers/ZoneManager$2.class
+com/empireconquest/objects/FlintlockItem.class
 com/empireconquest/objects/EmpTeam.class
 com/empireconquest/listeners/JoinQuitListener.class
 com/empireconquest/listeners/ZoneListener$1.class
